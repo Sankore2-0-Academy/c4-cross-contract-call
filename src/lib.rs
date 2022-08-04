@@ -6,19 +6,8 @@
  *
  */
 
-use std::str::FromStr;
-
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::{near_bindgen, Promise, ext_contract, AccountId, env, Gas};
-
-// Gas for callback function
-const XCC_GAS: Gas = Gas(7_000_000_000_000);
-
-// External smart contract module configuration
-#[ext_contract(ext_accounts_contract)]
-pub trait Accounts {
-    fn get_address_info(&self, msg: String) -> String;
-}
+use near_sdk::{log, near_bindgen, env};
 
 // Define the contract structure
 #[near_bindgen]
@@ -38,35 +27,24 @@ impl Default for Contract{
 #[near_bindgen]
 impl Contract {
     /**
-     * Makes a cross-contract call to an external contract (i.e accounts.c4-sankore.testnet)
+     * Responds with the signer and predecessor wallet addresses in a string
      */
-    pub fn call_accounts_contract(&self, msg: String) -> Promise {
-        // Invokes get_address_info function of accounts.c4-sankore.testnet smart contract
-        ext_accounts_contract::ext(self.accounts_account_id()).get_address_info(msg)
-        // Handles the response of the cross-contract call using response_callback function
-        .then(
-            Self::ext(env::current_account_id())
-            .with_static_gas(XCC_GAS)
-            .response_callback()
-        )
-    }
+    pub fn get_address_info(&self, msg: String) -> String {
+        let signer = env::signer_account_id();
+        let predecessor = env::predecessor_account_id();
 
-    /**
-     * The callback function handling cross-contract call response
-     */
-    #[private]
-    pub fn response_callback(#[callback_unwrap] response: String) -> String {
-        let mut result = String::from(response);
-        result.push_str(" : processed in XCC Smart Contract");
+        let mut result = String::from("Accounts:\n");
+        result.push_str("Signer Address: ");
+        result.push_str(signer.as_str());
+
+
+        result.push_str("\nPredecessor Address: ");
+        result.push_str(predecessor.as_str());
+
+
+        result.push_str("\nCaller Message: ");
+        result.push_str(msg.as_str());
+
         result
     }
-
-    /**
-     * Returns the wallet address of the external contract (i.e accounts.c4-sankore.testnet)
-     */
-    fn accounts_account_id(&self) -> AccountId {
-        let acc = AccountId::from_str("accounts.c4-sankore.testnet").unwrap();
-        acc
-    }
-    
 }
